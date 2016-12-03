@@ -20,6 +20,7 @@ class AudioSource(threading.Thread):
 
     self.lock = threading.Lock()
     self.listeners = list()
+    self.error_count = 0
 
   def init_audio(self):
     self.filt = audiofilter.AudioFilter(samples_per_sec=RATE / CHUNK)
@@ -65,9 +66,11 @@ class AudioSource(threading.Thread):
       except IOError as err:
         # TODO: track errors
         print 'IOError: %s' % err
+        self.error_count += 1
         continue
       if data is None:
         print 'Error: empty read.'
+        self.error_count += 1
         continue
 
       pdata = self.filt.process(data)

@@ -1,5 +1,6 @@
 import numpy as np
 import collections
+import time
 
 SILENCE_THRESH = 20
 
@@ -13,6 +14,9 @@ GAIN_NEG_MULT = 5
 
 MAX_GAIN = 10
 
+# duration to consider silence.
+SILENCE_SEC = 5.0
+
 
 class AudioFilter(object):
 
@@ -25,6 +29,11 @@ class AudioFilter(object):
 
     self.gain = 1.0
     self.gain_rate = GAIN_PER_SEC / samples_per_sec
+
+    self.last_update = time.time()
+
+  def is_silent(self):
+    return time.time() - self.last_update > SILENCE_SEC
 
   def process(self, data):
     ndata = np.fromstring(data, np.int16)
@@ -55,4 +64,6 @@ class AudioFilter(object):
     gain = min(gain, float(2**15 - 1) / peak)
 
     ndata = (ndata * gain).clip(min=-2**15, max=2**15 - 1).astype(np.int16)
+
+    self.last_update = time.time()
     return ndata.tostring()
