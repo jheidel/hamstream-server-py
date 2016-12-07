@@ -65,6 +65,7 @@ class StatsClient(tornado.websocket.WebSocketHandler):
           'level': self.audio.filt.audio_level,
           'gain': self.audio.filt.gain,
           'aerrors': self.audio.error_count,
+          'clients': self.audio.num_listeners(),
       }
       if not self.audio.filt.is_silent():
         self.write_message(json.dumps(data))

@@ -1,13 +1,40 @@
+import Queue
 import pyaudio
 import threading
 
 import audiofilter
 
-CHUNK = 1024
+CHUNK = 2048
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 48000
 DEV_NAME = "USB Audio Device"
+
+
+class AudioClient(threading.Thread):
+
+  def __init__(self, listener):
+    super(AudioClient, self).__init__()
+    self.daemon = True
+    self.data_queue = Queue.Queue()
+    self.stopped = threading.Event()
+    self.listener = listener
+
+  def stop(self):
+    self.stopped.set()
+
+  def put(self, data):
+    self.data_queue.put(data)
+
+  def run(self):
+    while True:
+      try:
+        data = self.data_queue.get(block=True, timeout=1)
+      except Queue.Empty:
+        continue
+      if self.stopped.is_set():
+        return
+      self.listener(data)
 
 
 class AudioSource(threading.Thread):
@@ -51,12 +78,19 @@ class AudioSource(threading.Thread):
     self.join()
 
   def add_listener(self, listener):
+    client = AudioClient(listener)
+    client.start()
     with self.lock:
-      self.listeners.append(listener)
+      self.listeners.append(client)
 
   def remove_listener(self, listener):
     with self.lock:
-      self.listeners.remove(listener)
+      client = (x for x in self.listeners if x.listener == listener).next()
+      self.listeners.remove(client)
+    client.stop()
+
+  def num_listeners(self):
+    return len(self.listeners)
 
   def run(self):
     self.init_audio()
@@ -80,6 +114,6 @@ class AudioSource(threading.Thread):
       # Broadcast to listeners.
       with self.lock:
         for listener in self.listeners:
-          listener(pdata)
+          listener.put(pdata)
 
     self.stop_audio()
