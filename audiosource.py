@@ -25,6 +25,7 @@ class AudioClient(threading.Thread):
 
   def stop(self):
     self.stopped.set()
+    self.data_queue.put(None)
 
   def put(self, data):
     self.data_queue.put(data)
@@ -36,10 +37,11 @@ class AudioClient(threading.Thread):
       try:
         data = self.data_queue.get(block=True, timeout=1)
       except Queue.Empty:
-        continue
+        data = None
       if self.stopped.is_set():
         break
-      self.listener(data)
+      if data is not None:
+        self.listener(data)
     print '[STOP] %s' % me
 
 
@@ -83,8 +85,15 @@ class AudioSource(threading.Thread):
     print "Stream terminated."
 
   def stop(self):
+    with self.lock:
+      for c in self.listeners:
+        c.stop()
+      for c in self.listeners:
+        c.join()
+      self.listeners = []
     self.stopped.set()
     self.join()
+    self.stream.close()
 
   def add_listener(self, *args, **kwargs):
     client = AudioClient(*args, **kwargs)
@@ -99,7 +108,8 @@ class AudioSource(threading.Thread):
     client.stop()
 
   def num_listeners(self):
-    return len(self.listeners)
+    with self.lock:
+      return len(self.listeners)
 
   def run(self):
     self.init_audio()
@@ -117,14 +127,13 @@ class AudioSource(threading.Thread):
         continue
 
       pdata = self.filt.process(data)
-      if pdata is None:
-        continue
 
       # Broadcast to filtered listeners.
       with self.lock:
         for listener in self.listeners:
           if listener.filtered:
-            listener.listener(pdata)
+            if pdata is not None:
+              listener.listener(pdata)
           else:
             listener.listener(data)
 

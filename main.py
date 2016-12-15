@@ -5,6 +5,7 @@ import tornado.web
 import socket
 import threading
 import json
+import signal
 
 import audiosource
 import audiologger
@@ -51,19 +52,26 @@ class StatsClient(tornado.websocket.WebSocketHandler):
   def open(self):
     print '[CONNECT] stats: %s' % self.request.remote_ip
     self.set_nodelay(True)
-    thread = threading.Thread(target=self.run)
-    thread.daemon = True
-    thread.start()
+    self.thread = threading.Thread(target=self.run)
+    self.thread.daemon = True
+    self.thread.start()
 
   def on_message(self, message):
     print 'stats message received: %s' % message
 
   def on_close(self):
     print '[DISCONNECT] stats: %s' % self.request.remote_ip
+    self.stop()
+
+  def stop(self):
     self.stopped.set()
+    self.thread.join()
 
   def run(self):
     while not self.stopped.is_set():
+      if self.audio.stopped.is_set():
+        # TODO: a bit of a hack.
+        break
       data = {
           'level': self.audio.filt.audio_level,
           'gain': self.audio.filt.gain,
@@ -100,11 +108,22 @@ def main():
   http_server = tornado.httpserver.HTTPServer(application)
   http_server.listen(PORT)
   my_ip = socket.gethostbyname(socket.gethostname())
+
+  def server_shutdown(signum, stack):
+    print 'Server shutdown'
+    tornado.ioloop.IOLoop.instance().stop()
+
+  signal.signal(signal.SIGINT, server_shutdown)
+  signal.signal(signal.SIGTERM, server_shutdown)
+
   print '*** Websocket Server Started at %s***' % my_ip
   tornado.ioloop.IOLoop.instance().start()
 
+  print 'graceful shutdown'
   alogger.close()
   audio.stop()
+
+  print 'exit'
 
 
 if __name__ == "__main__":
