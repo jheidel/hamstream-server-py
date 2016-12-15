@@ -13,12 +13,15 @@ DEV_NAME = "USB Audio Device"
 
 class AudioClient(threading.Thread):
 
-  def __init__(self, listener):
+  def __init__(self, name, listener, filtered):
     super(AudioClient, self).__init__()
     self.daemon = True
-    self.data_queue = Queue.Queue(maxsize=2)
+    self.data_queue = Queue.Queue(maxsize=100)
     self.stopped = threading.Event()
+
+    self.name = name
     self.listener = listener
+    self.filtered = filtered
 
   def stop(self):
     self.stopped.set()
@@ -27,14 +30,17 @@ class AudioClient(threading.Thread):
     self.data_queue.put(data)
 
   def run(self):
+    me = 'audio client [%s, filtered=%s]' % (self.name, self.filtered)
+    print '[START] %s' % me
     while True:
       try:
         data = self.data_queue.get(block=True, timeout=1)
       except Queue.Empty:
         continue
       if self.stopped.is_set():
-        return
+        break
       self.listener(data)
+    print '[STOP] %s' % me
 
 
 class AudioSource(threading.Thread):
@@ -69,6 +75,9 @@ class AudioSource(threading.Thread):
     print "Stream started."
     self.audio_started.set()
 
+  def wait_started(self):
+    self.audio_started.wait(10)
+
   def stop_audio(self):
     self.stream.stop_stream()
     print "Stream terminated."
@@ -77,8 +86,8 @@ class AudioSource(threading.Thread):
     self.stopped.set()
     self.join()
 
-  def add_listener(self, listener):
-    client = AudioClient(listener)
+  def add_listener(self, *args, **kwargs):
+    client = AudioClient(*args, **kwargs)
     client.start()
     with self.lock:
       self.listeners.append(client)
@@ -111,10 +120,12 @@ class AudioSource(threading.Thread):
       if pdata is None:
         continue
 
-      # Broadcast to listeners.
+      # Broadcast to filtered listeners.
       with self.lock:
         for listener in self.listeners:
-          listener.listener(pdata)
-          #listener.put(pdata)
+          if listener.filtered:
+            listener.listener(pdata)
+          else:
+            listener.listener(data)
 
     self.stop_audio()

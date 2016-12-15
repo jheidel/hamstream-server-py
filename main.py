@@ -7,6 +7,7 @@ import threading
 import json
 
 import audiosource
+import audiologger
 
 PORT = 8080
 STATS_INTERVAL = 1. / 15
@@ -21,7 +22,10 @@ class AudioClient(tornado.websocket.WebSocketHandler):
   def open(self):
     print '[CONNECT] audio: %s' % self.request.remote_ip
     self.set_nodelay(True)
-    self.audio.add_listener(self.on_new_audio)
+    self.audio.add_listener(
+        name='stream %s' % self.request.remote_ip,
+        listener=self.on_new_audio,
+        filtered=True)
 
   def on_message(self, message):
     print 'audio message received: %s' % message
@@ -74,6 +78,12 @@ class StatsClient(tornado.websocket.WebSocketHandler):
 def main():
   audio = audiosource.AudioSource()
   audio.start()
+  audio.wait_started()
+
+  alogger = audiologger.AudioLogger(filt=audio.filt)
+  alogger.open()
+  audio.add_listener(
+      name='wave_writer', listener=alogger.on_new_audio, filtered=False)
 
   # TODO timeout waiting for audio init.
   audio.audio_started.wait()
@@ -93,6 +103,7 @@ def main():
   print '*** Websocket Server Started at %s***' % my_ip
   tornado.ioloop.IOLoop.instance().start()
 
+  alogger.close()
   audio.stop()
 
 
