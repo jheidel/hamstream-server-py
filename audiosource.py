@@ -4,7 +4,7 @@ import threading
 
 import audiofilter
 
-CHUNK = 2048
+CHUNK = 1024
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 48000
@@ -16,7 +16,7 @@ class AudioClient(threading.Thread):
   def __init__(self, listener):
     super(AudioClient, self).__init__()
     self.daemon = True
-    self.data_queue = Queue.Queue()
+    self.data_queue = Queue.Queue(maxsize=2)
     self.stopped = threading.Event()
     self.listener = listener
 
@@ -114,6 +114,7 @@ class AudioSource(threading.Thread):
       # Broadcast to listeners.
       with self.lock:
         for listener in self.listeners:
-          listener.put(pdata)
+          listener.listener(pdata)
+          #listener.put(pdata)
 
     self.stop_audio()

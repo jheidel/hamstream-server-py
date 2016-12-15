@@ -9,7 +9,7 @@ import json
 import audiosource
 
 PORT = 8080
-STATS_INTERVAL = 0.05
+STATS_INTERVAL = 1. / 15
 
 
 class AudioClient(tornado.websocket.WebSocketHandler):
@@ -19,7 +19,7 @@ class AudioClient(tornado.websocket.WebSocketHandler):
     self.audio = audio
 
   def open(self):
-    print 'new connection'
+    print '[CONNECT] audio: %s' % self.request.remote_ip
     self.set_nodelay(True)
     self.audio.add_listener(self.on_new_audio)
 
@@ -27,14 +27,13 @@ class AudioClient(tornado.websocket.WebSocketHandler):
     print 'audio message received: %s' % message
 
   def on_new_audio(self, data):
-    # TODO: make this non-blocking
     try:
       self.write_message(data, binary=True)
     except Exception as err:
       print 'Socket audio write error: %s' % err
 
   def on_close(self):
-    print 'connection closed'
+    print '[DISCONNECT] audio: %s' % self.request.remote_ip
     self.audio.remove_listener(self.on_new_audio)
 
 
@@ -46,7 +45,7 @@ class StatsClient(tornado.websocket.WebSocketHandler):
     self.stopped = threading.Event()
 
   def open(self):
-    print 'new stats connection'
+    print '[CONNECT] stats: %s' % self.request.remote_ip
     self.set_nodelay(True)
     thread = threading.Thread(target=self.run)
     thread.daemon = True
@@ -56,8 +55,8 @@ class StatsClient(tornado.websocket.WebSocketHandler):
     print 'stats message received: %s' % message
 
   def on_close(self):
+    print '[DISCONNECT] stats: %s' % self.request.remote_ip
     self.stopped.set()
-    print 'stats connection closed'
 
   def run(self):
     while not self.stopped.is_set():
