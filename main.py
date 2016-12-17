@@ -6,12 +6,36 @@ import socket
 import threading
 import json
 import signal
+import time
+from RPi import GPIO
 
 import audiosource
 import audiologger
 
 PORT = 8080
 STATS_INTERVAL = 1. / 15
+
+GPIO_LED_PIN = 22
+
+
+class PiFlasher(threading.Thread):
+
+  def __init__(self):
+    super(PiFlasher, self).__init__()
+    self.stopped = threading.Event()
+
+  def stop(self):
+    self.stopped.set()
+    self.join()
+
+  def run(self):
+    GPIO.setmode(GPIO.BOARD)
+    GPIO.setup(GPIO_LED_PIN, GPIO.OUT)
+    while not self.stopped.is_set():
+      GPIO.output(GPIO_LED_PIN, GPIO.HIGH)
+      time.sleep(0.1)
+      GPIO.output(GPIO_LED_PIN, GPIO.LOW)
+      time.sleep(0.3)
 
 
 class AudioClient(tornado.websocket.WebSocketHandler):
@@ -105,6 +129,9 @@ def main():
       }),
   ])
 
+  flasher = PiFlasher()
+  flasher.start()
+
   http_server = tornado.httpserver.HTTPServer(application)
   http_server.listen(PORT)
   my_ip = socket.gethostbyname(socket.gethostname())
@@ -120,6 +147,7 @@ def main():
   tornado.ioloop.IOLoop.instance().start()
 
   print 'graceful shutdown'
+  flasher.stop()
   alogger.close()
   audio.stop()
 

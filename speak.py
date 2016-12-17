@@ -12,8 +12,9 @@ def speak(txt):
   wave_file = StringIO.StringIO(out)
   wv = wave.open(wave_file)
   frames = wv.readframes(wv.getnframes())
-  resamp_frames = audioop.ratecv(
-      frames, 2, wv.getnchannels(), wv.getframerate(), 48000, None)
+  resamp_frames = audioop.ratecv(frames, 2,
+                                 wv.getnchannels(),
+                                 wv.getframerate(), 48000, None)
   return resamp_frames[0]
 
 
