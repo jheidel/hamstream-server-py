@@ -13,6 +13,7 @@ from RPi import GPIO
 
 import audiosource
 import audiologger
+import commands
 
 PORT = 8080
 STATS_INTERVAL = 1. / 15
@@ -84,6 +85,10 @@ class StatsClient(tornado.websocket.WebSocketHandler):
 
   def on_message(self, message):
     print 'stats message received: %s' % message
+
+    # TODO: make this json
+    if "shutdown" in message:
+      commands.shutdown()
 
   def on_close(self):
     print '[DISCONNECT] stats: %s' % self.request.remote_ip
