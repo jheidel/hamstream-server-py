@@ -5,10 +5,11 @@ import audioop
 from datetime import datetime as dt
 
 ESPEAK = "/usr/bin/espeak"
+NICE = "/usr/bin/nice"
 
 
 def speak(txt):
-  out = subprocess.check_output([ESPEAK, '--stdout', txt])
+  out = subprocess.check_output([NICE, "-n10", ESPEAK, '--stdout', txt])
   wave_file = StringIO.StringIO(out)
   wv = wave.open(wave_file)
   frames = wv.readframes(wv.getnframes())

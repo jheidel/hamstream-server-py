@@ -1,0 +1,16 @@
+[Unit] 
+Description=Hamstream Server
+Wants=network.target
+After=network.target
+After=syslog.target
+
+[Service]
+type=simple
+PIDFile=/var/run/hamstream.pid
+WorkingDirectory=/home/pi/sources/hamstream/
+ExecStart=/home/pi/sources/hamstream/main.py
+StandardOutput=syslog
+StandardError=syslog
+
+[Install]
+WantedBy=multi-user.target

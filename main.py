@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import tornado.httpserver
 import tornado.websocket
 import tornado.ioloop

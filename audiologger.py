@@ -1,5 +1,9 @@
 import wave
 import speak
+import os
+from datetime import datetime as dt
+
+SAVE_DIR = "/home/pi/record/"
 
 
 class AudioLogger(object):
@@ -9,7 +13,9 @@ class AudioLogger(object):
     self.silent = True
 
   def open(self):
-    self.wv = wave.open('testoutput.wav', 'wb')
+    ts = dt.now().strftime("%Y%m%d-%H%M%S")
+    fn = "audio_%s.wav" % ts
+    self.wv = wave.open(os.path.join(SAVE_DIR, fn), 'wb')
     self.wv.setparams((1, 2, 48000, 0, 'NONE', 'not compressed'))
 
     self.wv.writeframes(speak.speak_rec_header())
