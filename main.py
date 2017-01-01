@@ -90,6 +90,9 @@ class StatsClient(tornado.websocket.WebSocketHandler):
     if "shutdown" in message:
       commands.shutdown()
 
+    if "wifiswitch" in message:
+      commands.wifiswitch()
+
   def on_close(self):
     print '[DISCONNECT] stats: %s' % self.request.remote_ip
     self.stop()
