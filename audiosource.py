@@ -115,7 +115,7 @@ class AudioSource(threading.Thread):
     self.init_audio()
     while not self.stopped.is_set():
       try:
-        data = self.stream.read(CHUNK)
+        data = self.stream.read(CHUNK, exception_on_overflow=False)
       except IOError as err:
         # TODO: track errors
         print 'IOError: %s' % err
